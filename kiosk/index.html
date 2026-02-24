@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>控制面板｜Windows 一體機</title>
+  <script src="assets/data.js"></script>
+  <style>
+    body { margin: 0; font-family: "Microsoft JhengHei", sans-serif; background: #ececec; color: #1f1f1f; }
+    .app { max-width: 1800px; margin: 20px auto; background: #fff; border-radius: 18px; overflow: hidden; border: 1px solid #d6d6d6; }
+    .head { display:flex; justify-content:space-between; align-items:center; padding:18px 24px; border-bottom:1px solid #ddd; }
+    .head h1 { margin:0; font-size:32px; }
+    .body { display:grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 100px); }
+    .side { border-right:1px solid #ddd; background:#f7f7f7; padding:16px; display:flex; flex-direction:column; gap:10px; }
+    button { border:none; border-radius:12px; padding:14px; font-size:22px; font-weight:700; cursor:pointer; }
+    .reset { background:#c75c5c; color:#fff; }
+    .back { background:#5175b9; color:#fff; }
+    .grid { padding:16px; display:grid; grid-template-columns:repeat(4,minmax(170px,1fr)); gap:10px; align-content:start; }
+    .dist-btn { background:#efefef; border:2px solid transparent; font-size:20px; }
+    .dist-btn.active { background:#f6e4e4; border-color:#bd8888; }
+    .areas { margin-top:8px; font-size:14px; color:#666; font-weight:500; }
+    #member-panel { grid-column:1 / -1; border-top:1px solid #ddd; padding-top:14px; margin-top:6px; display:none; }
+    #member-title { margin:0 0 8px; font-size:28px; color:#8b5757; }
+    .member-grid { display:grid; grid-template-columns:repeat(6,minmax(160px,1fr)); gap:10px; }
+    .member-btn { background:#222; color:#fff; font-size:24px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="head">
+      <h1>現場議事｜控制端（右）</h1>
+      <div>資料已對齊 13 選區 / 57 議員</div>
+    </header>
+    <main class="body">
+      <aside class="side">
+        <button class="reset" onclick="send('RESET')">🏠 重設</button>
+        <button class="back" onclick="send('BACK')">↩ 回上一頁</button>
+      </aside>
+      <section id="district-grid" class="grid">
+        <div id="member-panel">
+          <h2 id="member-title"></h2>
+          <div id="member-list" class="member-grid"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const bc = new BroadcastChannel('tainan_map_sync');
+    const districtGrid = document.getElementById('district-grid');
+    const memberPanel = document.getElementById('member-panel');
+
+    districts.forEach((d) => {
+      const btn = document.createElement('button');
+      btn.className = 'dist-btn';
+      btn.id = `dist-${d.id}`;
+      btn.innerHTML = `${d.name}<div class="areas">${d.areas}</div>`;
+      btn.onclick = () => send('CHANGE_DISTRICT', d.id);
+      districtGrid.insertBefore(btn, memberPanel);
+    });
+
+    function send(type, id) {
+      bc.postMessage({ type, districtId: id, memberId: id });
+      if (type === 'CHANGE_DISTRICT') {
+        document.querySelectorAll('.dist-btn').forEach((b) => b.classList.remove('active'));
+        document.getElementById(`dist-${id}`)?.classList.add('active');
+        renderMembers(id);
+      }
+      if (type === 'RESET') {
+        memberPanel.style.display = 'none';
+        document.querySelectorAll('.dist-btn').forEach((b) => b.classList.remove('active'));
+      }
+    }
+
+    function renderMembers(distId) {
+      const district = districts.find((d) => d.id === distId);
+      const list = document.getElementById('member-list');
+      document.getElementById('member-title').textContent = `${district.name}（${district.areas}）`;
+      list.innerHTML = '';
+      members.filter((m) => m.distId === distId).forEach((m) => {
+        const btn = document.createElement('button');
+        btn.className = 'member-btn';
+        btn.textContent = m.name;
+        btn.onclick = () => send('SHOW_MEMBER', m.id);
+        list.appendChild(btn);
+      });
+      memberPanel.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
